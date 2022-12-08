@@ -71,7 +71,7 @@ public:
     }
 
     vector<Document> FindTopDocuments(const string& raw_query) const {
-        const set<string> query_words = ParseQuery(raw_query);
+        const Query query_words = ParseQuery(raw_query);
         auto matched_documents = FindAllDocuments(query_words);
 
         sort(matched_documents.begin(), matched_documents.end(),
@@ -103,38 +103,48 @@ private:
         return words;
     }
 
-    set<string> ParseQuery(const string& text) const {
-        set<string> query_words;
+    struct Query {
+        set<string> plus_words;
+        set<string> minus_words;
+    };
+
+    Query ParseQuery(const string& text) const {
+        Query query;
         for (const string& word : SplitIntoWordsNoStop(text)) {
-            query_words.insert(word);
+            if (word[0] != '-') {
+                query.plus_words.insert(word);
+            }
+            else {
+                string corrected_word = word.substr(1);
+                query.minus_words.insert(corrected_word);
+            }
         }
-        return query_words;
+        return query;
     }
 
-    vector<Document> FindAllDocuments(const set<string>& query_words) const {
+    double CalculateIDF(const string& word) const {
+        return log(static_cast<double>(document_count_) / static_cast<double>(documents_.at(word).size()));
+    }
+
+    vector<Document> FindAllDocuments(const Query& query_words) const {
         
         vector<Document> matched_documents;
-        set<string> minus_words;
         map<int, double> results;
         
-        for (const string& word : query_words) {
-            if (word[0] != '-' && documents_.count(word)) {
-                double idf = log(static_cast<double>(document_count_) / static_cast<double>(documents_.at(word).size()));
+        for (const string& word : query_words.plus_words) {
+            if (documents_.count(word)) {               
                 for (const auto& [id, tf] : documents_.at(word)) {
+                    double idf = CalculateIDF(word);
                     results[id] += idf * tf;
-                }
-            }
-            if (word[0] == '-') {
-                string corrected_word = word.substr(1);
-                if (documents_.count(corrected_word)) {
-                    minus_words.insert(corrected_word);
-                }
+                } 
             }
         }
 
-        for (const string& word : minus_words) {
-            for (const auto& [id, tf] : documents_.at(word)) {
-                results.erase(id);
+        for (const string& word : query_words.minus_words) {
+            if (documents_.count(word)) {                
+                for (const auto& [id, tf] : documents_.at(word)) {
+                    results.erase(id);
+                }
             }
         }
 
