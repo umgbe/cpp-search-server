@@ -76,20 +76,18 @@ public:
     }
     
     vector<Document> FindTopDocuments(const string& raw_query) const {
-        return FindTopDocuments(raw_query, [](int document_id, DocumentStatus status, int rating) { return status == DocumentStatus::ACTUAL; });
+        return FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
+    }
+
+    vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus document_status) const {
+        return FindTopDocuments(raw_query, [document_status](int document_id, DocumentStatus status, int rating) { return status == document_status; });
     }
     
     template <typename FilterFunction>
     vector<Document> FindTopDocuments(const string& raw_query, FilterFunction filter_function) const {
         const Query query = ParseQuery(raw_query);
         
-        vector<Document> matched_documents;
-        if constexpr (is_same_v<FilterFunction, DocumentStatus>) {
-            matched_documents = FindAllDocuments(query, [filter_function](int document_id, DocumentStatus status, int rating) { return status == filter_function; });
-        }
-        else {
-            matched_documents = FindAllDocuments(query, filter_function);
-        }
+        vector<Document> matched_documents = FindAllDocuments(query, filter_function);
 
         sort(matched_documents.begin(), matched_documents.end(),
              [](const Document& lhs, const Document& rhs) {
