@@ -286,24 +286,6 @@ ostream& operator<<(ostream& os, const map<T,U> m) {
     }
     return os;
 }
-/*
-ostream& operator<<(ostream& os, const DocumentStatus status) {
-    switch (status) {
-        case DocumentStatus::ACTUAL:
-        os << "DocumentStatus::ACTUAL"s;
-        break;
-        case DocumentStatus::BANNED:
-        os << "DocumentStatus::BANNED"s;
-        break;
-        case DocumentStatus::IRRELEVANT:
-        os << "DocumentStatus::IRRELEVANT"s;
-        break;
-        case DocumentStatus::REMOVED:
-        os << "DocumentStatus::REMOVED"s;
-        break;
-    }
-    return os;
-}*/
 
 template <typename T, typename U>
 void AssertEqualImpl(const T& t, const U& u, const string& t_str, const string& u_str, const string& file,
@@ -454,7 +436,6 @@ void TestMatchDocument() {
         const auto [matched_words, status] = server.MatchDocument(raw_query, 65);
         const vector<string> expected_result = {"fr"s, "ioy"s};
         ASSERT_EQUAL_HINT(matched_words, expected_result, "Матчинг документов вернул некорректный набор слов"s);
-        //ASSERT_EQUAL_HINT(status, DocumentStatus::ACTUAL, "Матчинг документов вернул некорректный статус"s);
         ASSERT_HINT((status == DocumentStatus::ACTUAL), "Матчинг документов вернул некорректный статус"s);
     }
     {
