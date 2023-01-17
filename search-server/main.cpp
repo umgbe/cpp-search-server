@@ -86,15 +86,8 @@ enum class DocumentStatus {
     REMOVED,
 };
 
-bool CheckForIncorrectMinuses(const string& text) {
-    vector<string> words = SplitIntoWords(text);
-    for (const string& word : words) {
-        if (word[0] == '-') {
-            if ((word.size() < 2) || (word[1] == '-')) {
-                return true;
-            }
-        }
-    }
+bool CheckForIncorrectMinuses(const string& word) {
+    if ((word[0] == '-') && ((word.size() < 2) || (word[1] == '-'))) return true;
     return false;
 }
 
