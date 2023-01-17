@@ -24,9 +24,19 @@ int ReadLineWithNumber() {
     return result;
 }
 
+bool CheckForSpecialSymbols(const string& text) {
+    for (const char c : text) {
+        if ((c <= 31) && (c >= 0)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 vector<string> SplitIntoWords(const string& text) {
     vector<string> words;
     string word;
+    if (CheckForSpecialSymbols(text)) throw invalid_argument("Текст содержит недопустимые символы"s);
     for (const char c : text) {
         if (c == ' ') {
             if (!word.empty()) {
@@ -76,28 +86,14 @@ enum class DocumentStatus {
     REMOVED,
 };
 
-bool CheckForSpecialSymbols(const string& text) {
-    for (const char c : text) {
-        if ((c <= 31) && (c >= 0)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool CheckForIncorrectMinuses(const string& text) {
-    char last_symbol = 'a';
-    for (const char c : text) {
-        if ((c == '-') && (last_symbol == '-')) {
-            return true;
+    vector<string> words = SplitIntoWords(text);
+    for (const string& word : words) {
+        if (word[0] == '-') {
+            if ((word.size() < 2) || (word[1] == '-')) {
+                return true;
+            }
         }
-        if ((c == ' ') && (last_symbol == '-')) {
-            return true;
-        }
-        last_symbol = c;
-    }
-    if (last_symbol == '-') {
-        return true;
     }
     return false;
 }
@@ -125,7 +121,6 @@ public:
 
         if (document_id < 0) throw invalid_argument("id добавляемого докумета меньше нуля"s);
         if (documents_.count(document_id)) throw invalid_argument("id добавляемого документа уже существует"s);
-        if (CheckForSpecialSymbols(document)) throw invalid_argument("Добавляемый документ содержит недопустимые символы"s);
 
         const vector<string> words = SplitIntoWordsNoStop(document);
         const double inv_word_count = 1.0 / words.size();
@@ -133,15 +128,11 @@ public:
             word_to_document_freqs_[word][document_id] += inv_word_count;
         }
         documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status});
-        documents_ids_unsorted.push_back(document_id);
+        documents_ids_unsorted_.push_back(document_id);
     }
 
     template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
-        
-        if (CheckForSpecialSymbols(raw_query)) throw invalid_argument("Поисковый запрос содержит недопустимые символы"s);
-        if (CheckForIncorrectMinuses(raw_query)) throw invalid_argument("Поисковый запрос содержит некорректно поставленные минусы"s);
-        
         const Query query = ParseQuery(raw_query);
         auto matched_documents = FindAllDocuments(query, document_predicate);
 
@@ -175,10 +166,6 @@ public:
     }
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const  {
-        
-        if (CheckForSpecialSymbols(raw_query)) throw invalid_argument("Поисковый запрос содержит недопустимые символы"s);
-        if (CheckForIncorrectMinuses(raw_query)) throw invalid_argument("Поисковый запрос содержит некорректно поставленные минусы"s);
-        
         const Query query = ParseQuery(raw_query);
         vector<string> matched_words;
         for (const string& word : query.plus_words) {
@@ -202,12 +189,7 @@ public:
     }
             
     int GetDocumentId(int index) const {
-        if ((index >= GetDocumentCount()) || (index < 0)) {
-            throw out_of_range("Индекс документа за пределами допустимого диапазона"s);
-        }
-        else {
-            return documents_ids_unsorted[index];
-        }
+        return documents_ids_unsorted_.at(index);
     }        
 
 private:
@@ -218,7 +200,7 @@ private:
     const set<string> stop_words_;
     map<string, map<int, double>> word_to_document_freqs_;
     map<int, DocumentData> documents_;
-    vector<int> documents_ids_unsorted;
+    vector<int> documents_ids_unsorted_;
 
     bool IsStopWord(const string& word) const {
         return stop_words_.count(word) > 0;
@@ -252,6 +234,9 @@ private:
     };
 
     QueryWord ParseQueryWord(string text) const {
+        if (CheckForIncorrectMinuses(text)) {
+            throw invalid_argument("Поисковый запрос содержит некорректно поставленные минусы"s);
+        }
         bool is_minus = false;
         if (text[0] == '-') {
             is_minus = true;
