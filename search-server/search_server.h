@@ -85,13 +85,15 @@ SearchServer::SearchServer(const StringContainer& stop_words)
     }
 }
 
+constexpr double ALLOWABLE_ERROR = 1e-6;
+
 template <typename DocumentPredicate>
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const {
     const Query query = ParseQuery(raw_query);
     auto matched_documents = FindAllDocuments(query, document_predicate);
     std::sort(matched_documents.begin(), matched_documents.end(), 
                 [](const Document& lhs, const Document& rhs) {
-                 if (std::abs(lhs.relevance - rhs.relevance) < 1e-6) {
+                 if (std::abs(lhs.relevance - rhs.relevance) < ALLOWABLE_ERROR) {
                      return lhs.rating > rhs.rating;
                  } else {
                      return lhs.relevance > rhs.relevance;
