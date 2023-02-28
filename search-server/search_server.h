@@ -36,18 +36,29 @@ public:
     int GetDocumentCount() const;
 
     std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string& raw_query, int document_id) const;
-            
-    int GetDocumentId(int index) const;        
+
+    auto begin() const {
+        return documents_ids_.begin();
+    }
+    
+    auto end() const {
+        return documents_ids_.end();
+    }
+
+    const std::map<std::string, double> GetWordFrequencies(int document_id) const;
+
+    void RemoveDocument(int document_id);  
 
 private:
     struct DocumentData {
         int rating;
         DocumentStatus status;
+        std::map<std::string, double> words_and_frequencies;
     };
     const std::set<std::string> stop_words_;
     std::map<std::string, std::map<int, double>> word_to_document_freqs_;
     std::map<int, DocumentData> documents_;
-    std::vector<int> documents_ids_unsorted_;
+    std::set<int> documents_ids_;
 
     bool IsStopWord(const std::string& word) const;
 
