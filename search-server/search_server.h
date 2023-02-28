@@ -17,8 +17,6 @@ const int MAX_RESULT_DOCUMENT_COUNT = 5;
 class SearchServer {
 public:
     
-    inline static constexpr int INVALID_DOCUMENT_ID = -1;
-    
     template <typename StringContainer>
     explicit SearchServer(const StringContainer& stop_words);
 
@@ -45,9 +43,11 @@ public:
         return documents_ids_.end();
     }
 
-    const std::map<std::string, double> GetWordFrequencies(int document_id) const;
+    const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
 
-    void RemoveDocument(int document_id);  
+    void RemoveDocument(int document_id);
+    
+    std::map<std::set<std::string>,std::set<int>> words_to_document_ids;  
 
 private:
     struct DocumentData {
@@ -85,6 +85,12 @@ private:
 
     template <typename DocumentPredicate>
     std::vector<Document> FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const;
+
+    bool CheckForSpecialSymbols(const std::string& text) const;
+
+    std::vector<std::string> SplitIntoWords(const std::string& text) const;
+
+    bool CheckForIncorrectMinuses(const std::string& word) const;
 };
 
 
@@ -92,7 +98,9 @@ template <typename StringContainer>
 SearchServer::SearchServer(const StringContainer& stop_words)
     : stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
     for (const std::string& word : stop_words) {
-        if (CheckForSpecialSymbols(word)) throw std::invalid_argument("Стоп-слово содержит недопустимые символы"s);
+        if (CheckForSpecialSymbols(word)) {
+            throw std::invalid_argument("Стоп-слово содержит недопустимые символы"s);
+        }
     }
 }
 

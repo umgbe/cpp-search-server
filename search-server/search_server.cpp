@@ -1,7 +1,5 @@
 #include "search_server.h"
 
-#include "string_processing.h"
-
 #include <stdexcept>
 #include <cmath>
 #include <numeric>
@@ -14,17 +12,24 @@ SearchServer::SearchServer(const std::string& stop_words_text)
 }
 
 void SearchServer::AddDocument(int document_id, const std::string& document, DocumentStatus status, const std::vector<int>& ratings) {
-    if (document_id < 0) throw std::invalid_argument("id добавляемого докумета меньше нуля"s);
-    if (documents_.count(document_id)) throw std::invalid_argument("id добавляемого документа уже существует"s);
+    if (document_id < 0) {
+        throw std::invalid_argument("id добавляемого докумета меньше нуля"s);
+    }
+    if (documents_.count(document_id)) {
+        throw std::invalid_argument("id добавляемого документа уже существует"s);
+    }
     const std::vector<std::string> words = SplitIntoWordsNoStop(document);
     std::map<std::string, double> words_to_save_with_document;
+    std::set<std::string> words_to_save_separate_from_document;
     const double inv_word_count = 1.0 / words.size();
     for (const std::string& word : words) {
         word_to_document_freqs_[word][document_id] += inv_word_count;
         words_to_save_with_document[word] += inv_word_count;
+        words_to_save_separate_from_document.insert(word);
     }
     documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status, words_to_save_with_document});
     documents_ids_.insert(document_id);
+    words_to_document_ids[words_to_save_separate_from_document].insert(document_id);
 }
 
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus status) const {
@@ -64,6 +69,40 @@ std::tuple<std::vector<std::string>, DocumentStatus> SearchServer::MatchDocument
 
 bool SearchServer::IsStopWord(const std::string& word) const {
     return stop_words_.count(word) > 0;
+}
+
+bool SearchServer::CheckForSpecialSymbols(const std::string& text) const {
+    for (const char c : text) {
+        if ((c <= 31) && (c >= 0)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<std::string> SearchServer::SplitIntoWords(const std::string& text) const {
+    std::vector<std::string> words;
+    std::string word;
+    if (CheckForSpecialSymbols(text)) throw std::invalid_argument("Текст содержит недопустимые символы"s);
+    for (const char c : text) {
+        if (c == ' ') {
+            if (!word.empty()) {
+                words.push_back(word);
+                word.clear();
+            }
+        } else {
+            word += c;
+        }
+    }
+    if (!word.empty()) {
+        words.push_back(word);
+    }
+
+    return words;
+}
+
+bool SearchServer::CheckForIncorrectMinuses(const std::string& word) const {
+    return ((word[0] == '-') && ((word.size() < 2) || (word[1] == '-')));
 }
 
 std::vector<std::string> SearchServer::SplitIntoWordsNoStop(const std::string& text) const {
@@ -114,11 +153,13 @@ double SearchServer::ComputeWordInverseDocumentFreq(const std::string& word) con
     return std::log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
 }
 
-const std::map<std::string, double> SearchServer::GetWordFrequencies(int document_id) const {
-    std::map<std::string, double> empty_result;
-    try {
+const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const {
+    if (count(documents_ids_.begin(), documents_ids_.end(), document_id)) {
         return documents_.at(document_id).words_and_frequencies;
-    } catch (const std::out_of_range& e) {
+    } 
+    else {
+        static std::map<std::string, double> empty_result;
+        empty_result.clear();
         return empty_result;
     }
 }
@@ -126,6 +167,17 @@ const std::map<std::string, double> SearchServer::GetWordFrequencies(int documen
 void SearchServer::RemoveDocument(int document_id) {
     for (auto [word, freq] : documents_.at(document_id).words_and_frequencies) {
         word_to_document_freqs_.at(word).erase(document_id);
+    }
+    std::set<std::string> key_to_find;
+    for (auto [words, ids] : words_to_document_ids) {
+        if (count(ids.begin(), ids.end(), document_id)) {
+            key_to_find = words;
+            break;
+        }
+    }
+    words_to_document_ids.at(key_to_find).erase(document_id);
+    if (words_to_document_ids.at(key_to_find).empty()) {
+        words_to_document_ids.erase(key_to_find);
     }
     documents_.erase(document_id);
     documents_ids_.erase(document_id);
