@@ -83,7 +83,9 @@ bool SearchServer::CheckForSpecialSymbols(const std::string& text) const {
 std::vector<std::string> SearchServer::SplitIntoWords(const std::string& text) const {
     std::vector<std::string> words;
     std::string word;
-    if (CheckForSpecialSymbols(text)) throw std::invalid_argument("Текст содержит недопустимые символы"s);
+    if (CheckForSpecialSymbols(text)) {
+        throw std::invalid_argument("Текст содержит недопустимые символы"s);
+    }
     for (const char c : text) {
         if (c == ' ') {
             if (!word.empty()) {
