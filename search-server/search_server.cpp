@@ -28,8 +28,13 @@ void SearchServer::AddDocument(int document_id, const std::string& document, Doc
         words_to_save_separate_from_document.insert(word);
     }
     documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status, words_to_save_with_document});
-    documents_ids_.insert(document_id);
-    words_to_document_ids[words_to_save_separate_from_document].insert(document_id);
+    if (words_to_document_ids_.count(words_to_save_separate_from_document)) {
+        documents_ids_.insert(find(documents_ids_.begin(), documents_ids_.end(), *words_to_document_ids_[words_to_save_separate_from_document].rbegin()), document_id);
+    } else {
+        documents_ids_.push_back(document_id);
+    }
+    words_to_document_ids_[words_to_save_separate_from_document].insert(document_id);
+
 }
 
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus status) const {
@@ -171,16 +176,16 @@ void SearchServer::RemoveDocument(int document_id) {
         word_to_document_freqs_.at(word).erase(document_id);
     }
     std::set<std::string> key_to_find;
-    for (auto [words, ids] : words_to_document_ids) {
+    for (auto [words, ids] : words_to_document_ids_) {
         if (count(ids.begin(), ids.end(), document_id)) {
             key_to_find = words;
             break;
         }
     }
-    words_to_document_ids.at(key_to_find).erase(document_id);
-    if (words_to_document_ids.at(key_to_find).empty()) {
-        words_to_document_ids.erase(key_to_find);
+    words_to_document_ids_.at(key_to_find).erase(document_id);
+    if (words_to_document_ids_.at(key_to_find).empty()) {
+        words_to_document_ids_.erase(key_to_find);
     }
     documents_.erase(document_id);
-    documents_ids_.erase(document_id);
+    documents_ids_.erase(find(documents_ids_.begin(),documents_ids_.end(), document_id));
 }

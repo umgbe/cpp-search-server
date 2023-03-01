@@ -1,17 +1,24 @@
 #include "remove_duplicates.h"
 
 void RemoveDuplicates(SearchServer& search_server) {
+    std::vector<std::pair<int, std::set<std::string>>> all_documents;
+
+    for (const int document_id : search_server) {
+        std::map document_data = search_server.GetWordFrequencies(document_id);
+        std::set<std::string> document_words;
+        for (auto [key, value] : document_data) {
+            document_words.insert(key);
+        }
+        all_documents.push_back({document_id, document_words});
+    }    
+    
     std::vector<int> ids_for_deletion;
-    for (const auto [words, ids] : search_server.words_to_document_ids) {
-        if (ids.size() > 1) {
-            int id_to_save = *std::min_element(ids.begin(), ids.end());
-            for (int id_to_delete : ids) {
-                if (id_to_delete != id_to_save) {
-                    ids_for_deletion.push_back(id_to_delete);
-                }
-            }
+    for (int i = 0; i < (all_documents.size() - 1); ++i) {
+        if (all_documents[i].second == all_documents[i+1].second) {
+            ids_for_deletion.push_back(all_documents[i].first);
         }
     }
+
     for (const int document_id : ids_for_deletion) {
         std::cout << "Found duplicate document id "s << document_id << std::endl;
         search_server.RemoveDocument(document_id);

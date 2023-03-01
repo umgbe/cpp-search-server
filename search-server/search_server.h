@@ -47,8 +47,6 @@ public:
 
     void RemoveDocument(int document_id);
     
-    std::map<std::set<std::string>,std::set<int>> words_to_document_ids;  
-
 private:
     struct DocumentData {
         int rating;
@@ -58,7 +56,8 @@ private:
     const std::set<std::string> stop_words_;
     std::map<std::string, std::map<int, double>> word_to_document_freqs_;
     std::map<int, DocumentData> documents_;
-    std::set<int> documents_ids_;
+    std::vector<int> documents_ids_;
+    std::map<std::set<std::string>,std::set<int>> words_to_document_ids_;  
 
     bool IsStopWord(const std::string& word) const;
 
