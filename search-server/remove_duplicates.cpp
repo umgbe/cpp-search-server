@@ -25,7 +25,7 @@ void RemoveDuplicates(SearchServer& search_server) {
                     end_of_sequence_found = true;
                 } else {
                     int new_minimum_id = std::min(minimum_id, all_documents[i+1].first);
-                    ids_for_deletion.push_back(std::max(minimum_id, new_minimum_id));
+                    ids_for_deletion.push_back(std::max(minimum_id, all_documents[i+1].first));
                     minimum_id = new_minimum_id;
                     ++i;
                 }
