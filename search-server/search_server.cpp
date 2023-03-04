@@ -20,20 +20,13 @@ void SearchServer::AddDocument(int document_id, const std::string& document, Doc
     }
     const std::vector<std::string> words = SplitIntoWordsNoStop(document);
     std::map<std::string, double> words_to_save_with_document;
-    std::set<std::string> words_to_save_separate_from_document;
     const double inv_word_count = 1.0 / words.size();
     for (const std::string& word : words) {
         word_to_document_freqs_[word][document_id] += inv_word_count;
         words_to_save_with_document[word] += inv_word_count;
-        words_to_save_separate_from_document.insert(word);
     }
     documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status, words_to_save_with_document});
-    if (words_to_document_ids_.count(words_to_save_separate_from_document)) {
-        documents_ids_.insert(find(documents_ids_.begin(), documents_ids_.end(), *words_to_document_ids_[words_to_save_separate_from_document].rbegin()), document_id);
-    } else {
-        documents_ids_.push_back(document_id);
-    }
-    words_to_document_ids_[words_to_save_separate_from_document].insert(document_id);
+    documents_ids_.insert(document_id);
 
 }
 
@@ -175,17 +168,6 @@ void SearchServer::RemoveDocument(int document_id) {
     for (auto [word, freq] : documents_.at(document_id).words_and_frequencies) {
         word_to_document_freqs_.at(word).erase(document_id);
     }
-    std::set<std::string> key_to_find;
-    for (auto [words, ids] : words_to_document_ids_) {
-        if (count(ids.begin(), ids.end(), document_id)) {
-            key_to_find = words;
-            break;
-        }
-    }
-    words_to_document_ids_.at(key_to_find).erase(document_id);
-    if (words_to_document_ids_.at(key_to_find).empty()) {
-        words_to_document_ids_.erase(key_to_find);
-    }
     documents_.erase(document_id);
-    documents_ids_.erase(find(documents_ids_.begin(),documents_ids_.end(), document_id));
+    documents_ids_.erase(document_id);
 }
