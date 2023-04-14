@@ -6,6 +6,7 @@
 #include <map>
 #include <stdexcept>
 #include <algorithm>
+#include <execution>
 
 #include "document.h"
 #include "string_processing.h"
@@ -35,6 +36,10 @@ public:
 
     std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string& raw_query, int document_id) const;
 
+    std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(std::execution::sequenced_policy, const std::string& raw_query, int document_id) const;
+
+    std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(std::execution::parallel_policy, const std::string& raw_query, int document_id) const;
+
     auto begin() const {
         return documents_ids_.begin();
     }
@@ -46,12 +51,17 @@ public:
     const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
 
     void RemoveDocument(int document_id);
+
+    void RemoveDocument(std::execution::sequenced_policy, int document_id);
+
+    void RemoveDocument(std::execution::parallel_policy, int document_id);
     
 private:
     struct DocumentData {
         int rating;
         DocumentStatus status;
         std::map<std::string, double> words_and_frequencies;
+        std::vector<std::string> words;
     };
     const std::set<std::string> stop_words_;
     std::map<std::string, std::map<int, double>> word_to_document_freqs_;
@@ -73,11 +83,15 @@ private:
     QueryWord ParseQueryWord(std::string text) const;
 
     struct Query {
-        std::set<std::string> plus_words;
-        std::set<std::string> minus_words;
+        std::vector<std::string> plus_words;
+        std::vector<std::string> minus_words;
     };
 
     Query ParseQuery(const std::string& text) const;
+
+    Query ParseQuery(std::execution::sequenced_policy, const std::string& text) const;
+
+    Query ParseQuery(std::execution::parallel_policy, const std::string& text) const;
 
     double ComputeWordInverseDocumentFreq(const std::string& word) const;
 
