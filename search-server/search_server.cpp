@@ -47,27 +47,13 @@ std::vector<Document> SearchServer::FindTopDocuments(std::string_view raw_query)
     return FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
 }
 
-std::vector<Document> SearchServer::FindTopDocuments(std::execution::sequenced_policy, std::string_view raw_query, DocumentStatus status) const {
-    return FindTopDocuments(raw_query, [status](int document_id, DocumentStatus document_status, int rating) {return document_status == status;});
-}
-
-std::vector<Document> SearchServer::FindTopDocuments(std::execution::sequenced_policy, std::string_view raw_query) const {
-    return FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
-}
-
-std::vector<Document> SearchServer::FindTopDocuments(std::execution::parallel_policy, std::string_view raw_query, DocumentStatus status) const {
-    return FindTopDocuments(std::execution::par, raw_query, [status](int document_id, DocumentStatus document_status, int rating) {return document_status == status;});
-}
-
-std::vector<Document> SearchServer::FindTopDocuments(std::execution::parallel_policy, std::string_view raw_query) const {
-    return FindTopDocuments(std::execution::par, raw_query, DocumentStatus::ACTUAL);
-}
-
 int SearchServer::GetDocumentCount() const {
     return documents_.size();
 }
 
-std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(std::string_view raw_query, int document_id) const  {
+using MatchedDocument = std::tuple<std::vector<std::string_view>, DocumentStatus>;
+
+MatchedDocument SearchServer::MatchDocument(std::string_view raw_query, int document_id) const  {
     if (documents_ids_.count(document_id) == 0) {
         throw std::out_of_range("document_id не существует"s);
     }
@@ -93,11 +79,11 @@ std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDoc
     return tie(matched_words, documents_.at(document_id).status);
 }
 
-std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(std::execution::sequenced_policy, std::string_view raw_query, int document_id) const {
+MatchedDocument SearchServer::MatchDocument(std::execution::sequenced_policy, std::string_view raw_query, int document_id) const {
     return MatchDocument(raw_query, document_id);
 }
 
-std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(std::execution::parallel_policy, std::string_view raw_query, int document_id) const {
+MatchedDocument SearchServer::MatchDocument(std::execution::parallel_policy, std::string_view raw_query, int document_id) const {
     if (documents_ids_.count(document_id) == 0) {
         throw std::out_of_range("document_id не существует"s);
     }
@@ -241,15 +227,15 @@ double SearchServer::ComputeWordInverseDocumentFreq(std::string_view word) const
     return std::log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(std::string(word)).size());
 }
 
-std::map<std::string_view, double> SearchServer::GetWordFrequencies(int document_id) const {
-    std::map<std::string_view, double> result;
+const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const {
     if (count(documents_ids_.begin(), documents_ids_.end(), document_id)) {
-        for (auto it = result.begin(); it != result.end(); ++it) {
-            result.insert({std::string_view(it->first), it->second});
-        }
+        return documents_.at(document_id).words_and_frequencies;
+    } 
+    else {
+        static std::map<std::string, double> empty_result;
+        empty_result.clear();
+        return empty_result;
     }
-    return result;
-
 }
 
 void SearchServer::RemoveDocument(int document_id) {
